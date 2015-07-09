@@ -1,2 +1,4 @@
 terraform/creds
 provisioning/inventory
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
