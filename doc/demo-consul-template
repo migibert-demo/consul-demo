@@ -1,0 +1,69 @@
+=====================================================================
+====                         Why ?                               ====
+=====================================================================
+Démon capable de maintenir à jour des fichiers sur le système à partir des données présentes dans Consul à partir de templates fournis par l'utilisateur.
+
+
+=====================================================================
+====                       Usecases                              ====
+=====================================================================
+Usecase 1: Générer un inventaire au format ansible des services actuellement "en vie"
+
+*********************************************************************
+{{range services}}[{{.Name}}]{{range service .Name}}
+{{.Address}}{{end}}
+
+{{end}}
+*********************************************************************
+
+Terminal 1
+-> consul-template -template everything.ctmpl:/tmp/inventory &
+-> watch -n 1 cat /tmp/inventory
+
+Terminal 2
+-> consul maint -enable -reason "Node is down..."
+-> consul maint -disable
+
+
+Usecase 2: Maintenir à jour une configuration haproxy
+
+*********************************************************************
+global
+    daemon
+    maxconn {{key "service/haproxy/maxconn"}}
+
+defaults
+    mode {{key "service/haproxy/mode"}}{{range ls "service/haproxy/timeouts"}}
+    timeout {{.Key}} {{.Value}}{{end}}
+
+listen  stats   0.0.0.0:5000
+        mode            http
+        log             global
+
+        maxconn 10
+
+        clitimeout      100s
+        srvtimeout      100s
+        contimeout      100s
+        timeout queue   100s
+
+        stats enable
+        stats hide-version
+        stats refresh 30s
+        stats show-node
+        stats auth admin:password
+        stats uri  /haproxy
+
+
+listen http-in
+    bind *:80{{range service "release.web"}}
+    server {{.Node}} {{.Address}}:{{.Port}}{{end}}
+*********************************************************************
+
+Terminal 1
+-> consul-template -template everything.ctmpl:/tmp/inventory &
+-> watch -n 1 cat /tmp/inventory
+
+Terminal 2
+-> consul maint -enable -reason "Node is down..."
+-> consul maint -disable

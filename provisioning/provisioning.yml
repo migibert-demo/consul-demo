@@ -1,0 +1,109 @@
+- hosts: all
+  sudo: yes
+  tasks:
+  - name: Hostname have to be known
+    lineinfile:
+      dest: /etc/hosts
+      regexp: '^127\.0\.0\.1'
+      line: "127.0.0.1 localhost {{ ansible_hostname }}"
+  - name: Install build tools
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+    with_items:
+      - build-essential
+      - python-pip
+  - name: Install httplib2
+    pip:
+      name: httplib2  
+  roles: 
+  - role: jdauphant.dns
+    dns_nameservers: ['127.0.0.1', '8.8.8.8', '8.8.4.4']
+
+- hosts: consul_servers
+  sudo: yes
+  roles:
+    - savagegus.consul
+  vars:
+    consul_version: 0.5.2
+    consul_is_ui: True
+    consul_is_server: True
+    consul_datacenter: "test"
+    consul_bootstrap_expect: "{{ groups['consul_servers'] | length }}"
+    consul_node_name: "{{ ansible_hostname }}"
+    consul_servers: "{{ groups['consul_servers'] }}"
+    nginx_remove_default: yes
+    htpasswd:
+    - name: admin
+    users:
+    - { name: admin, password: admin }
+    nginx_sites:
+    - id: consul
+      add_webroot: no
+      name: consul.local
+      rules:
+      - gzip
+      - security
+      auth:
+        name: consul
+        file: admin
+
+- hosts: consul_agents
+  sudo: yes
+  roles:
+    - savagegus.consul
+    - { role: mtchavez.consul-template, consul_template_ver: 0.10.0 }
+  tasks:
+    - name: Register external DNS access Healthcheck
+      uri:
+        url: http://localhost:8500/v1/agent/check/register
+        method: PUT
+        status_code: 200
+        body_format: json
+        body: "{{ item | to_json }}"
+        return_content: yes
+      with_items: "{{ healthchecks }}"
+  vars:    
+    consul_version: 0.5.2
+    consul_datacenter: "test"
+    consul_node_name: "{{ ansible_hostname }}"
+    consul_bind_address: "{{ ansible_default_ipv4['address'] }}"
+    consul_join_at_start: True
+    consul_servers: "{{ groups['consul_servers'] }}"
+    healthchecks:
+      - Name: ping google.com
+        Script: ping -c1 google.com >/dev/null
+        Interval: 10s
+        _hack: null # This is sad, but we need this for now...
+
+
+- hosts: webservers
+  sudo: yes
+  vars:
+    service:
+      ID: web
+      Name: web
+      Tags: ['v1']
+      Port: 80
+      HTTP: 'localhost'
+      Interval: 10s
+      _hack: null # This is sad, but we need this for now...
+      Check:
+        HTTP: 'http://localhost:80'
+        Interval: '10s'
+  tasks:
+  - name: Install service
+    apt:
+      name: apache2
+      state: present
+  - name: Let apache tell who respond
+    shell: "hostname > /var/www/html/index.html"
+    changed_when: False
+  - name: Register web service
+    uri:
+      url: http://localhost:8500/v1/agent/service/register
+      method: PUT
+      status_code: 200
+      body_format: json
+      body: "{{ service | to_json }}"
+      return_content: yes
