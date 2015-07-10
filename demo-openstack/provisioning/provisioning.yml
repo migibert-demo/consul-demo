@@ -52,7 +52,8 @@
   sudo: yes
   roles:
     - savagegus.consul
-    - { role: mtchavez.consul-template, consul_template_ver: 0.10.0 }
+    - role: mtchavez.consul-template
+      consul_template_ver: 0.10.0
   tasks:
     - name: Register external DNS access Healthcheck
       uri:
@@ -63,7 +64,8 @@
         body: "{{ item | to_json }}"
         return_content: yes
       with_items: "{{ healthchecks }}"
-  vars:    
+      tags: register_healthcheck
+  vars:
     consul_version: 0.5.2
     consul_datacenter: "test"
     consul_node_name: "{{ ansible_hostname }}"
@@ -107,3 +109,4 @@
       body_format: json
       body: "{{ service | to_json }}"
       return_content: yes
+    tags: register_service

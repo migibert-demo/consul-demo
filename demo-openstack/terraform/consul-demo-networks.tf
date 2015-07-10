@@ -1,20 +1,3 @@
-provider "openstack" {
-    insecure = true
-}
-
-variable "router_id" {
-    default = "3292fe33-0243-4bca-8acc-b7731ec4298e"
-}
-
-variable "keypair_name" {
-    default = "cd-demo"
-}
-
-variable "floatingip_pool" {
-    default = "PublicNetwork-02"
-}
-
-
 resource "openstack_networking_network_v2" "consul-demo-net" {
     name = "consul-demo-net"
 }

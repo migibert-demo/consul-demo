@@ -1,4 +1,4 @@
-terraform/creds
-provisioning/inventory
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
+**/creds
+demo-openstack/provisioning/inventory
+demo-openstack/terraform/terraform.tfstate
+demo-openstack/terraform/terraform.tfstate.backup

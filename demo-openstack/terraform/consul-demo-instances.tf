@@ -1,4 +1,4 @@
-resource "openstack_compute_instance_v2" "instance-orchestrator" {
+    resource "openstack_compute_instance_v2" "instance-orchestrator" {
     name = "orchestrator"
     image_name = "ubuntu-14.04_x86_64"
     flavor_name = "1_vCPU_RAM_512M_HD_10G"
